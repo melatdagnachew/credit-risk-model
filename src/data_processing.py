@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+from sklearn.cluster import KMeans
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -112,6 +113,89 @@ def build_customer_dataset(df):
 
     return customer_df
 
+def create_rfm_features(df):
+    """
+    Create Recency, Frequency, Monetary features.
+    """
+
+    df["TransactionStartTime"] = pd.to_datetime(
+        df["TransactionStartTime"]
+    )
+
+    snapshot_date = (
+        df["TransactionStartTime"].max()
+        + pd.Timedelta(days=1)
+    )
+
+    rfm_df = (
+        df.groupby("CustomerId")
+        .agg(
+            Recency=(
+                "TransactionStartTime",
+                lambda x: (
+                    snapshot_date - x.max()
+                ).days
+            ),
+            Frequency=("TransactionId", "count"),
+            Monetary=("Amount", "sum"),
+        )
+        .reset_index()
+    )
+
+    return rfm_df
+
+
+def create_risk_labels(rfm_df):
+    """
+    Cluster customers into risk groups.
+    """
+
+    rfm_features = rfm_df[
+        ["Recency", "Frequency", "Monetary"]
+    ]
+
+    scaler = StandardScaler()
+
+    rfm_scaled = scaler.fit_transform(
+        rfm_features
+    )
+
+    kmeans = KMeans(
+        n_clusters=3,
+        random_state=42,
+        n_init=10
+    )
+
+    rfm_df["cluster"] = kmeans.fit_predict(
+        rfm_scaled
+    )
+
+    return rfm_df
+
+
+def assign_high_risk_label(rfm_df):
+    """
+    Identify least engaged customer segment.
+    """
+
+    cluster_summary = (
+        rfm_df.groupby("cluster")
+        [["Recency", "Frequency", "Monetary"]]
+        .mean()
+    )
+
+    print("\nCluster Summary")
+    print(cluster_summary)
+
+    high_risk_cluster = cluster_summary[
+        "Recency"
+    ].idxmax()
+
+    rfm_df["is_high_risk"] = (
+        rfm_df["cluster"] == high_risk_cluster
+    ).astype(int)
+
+    return rfm_df
 
 def build_preprocessing_pipeline(
     numerical_features,
@@ -164,14 +248,53 @@ if __name__ == "__main__":
 
     df = load_data("data/raw/data.csv")
 
+    # -------------------------
+    # Customer Feature Dataset
+    # -------------------------
+
     customer_df = build_customer_dataset(df)
 
-    customer_df.to_csv(
-    "data/processed/customer_features.csv",
-    index=False
+    # -------------------------
+    # RFM + Risk Target
+    # -------------------------
+
+    rfm_df = create_rfm_features(df)
+
+    rfm_df = create_risk_labels(rfm_df)
+
+    rfm_df = assign_high_risk_label(rfm_df)
+
+    customer_df = customer_df.merge(
+        rfm_df[
+            ["CustomerId", "is_high_risk"]
+        ],
+        on="CustomerId",
+        how="left"
     )
 
-    print("Customer features saved successfully")
+    # Save processed dataset
+
+    customer_df.to_csv(
+        "data/processed/customer_features.csv",
+        index=False
+    )
+
+    print(
+        "\nCustomer features saved successfully."
+    )
+
+    print(
+        "\nTarget Distribution:"
+    )
+
+    print(
+        customer_df["is_high_risk"]
+        .value_counts()
+    )
+
+    # -------------------------
+    # Preprocessing Pipeline
+    # -------------------------
 
     numerical_features = [
         "total_transaction_amount",
@@ -199,7 +322,20 @@ if __name__ == "__main__":
         categorical_features,
     )
 
-    transformed = pipeline.fit_transform(customer_df)
+    X = customer_df.drop(
+        columns=[
+            "CustomerId",
+            "is_high_risk"
+        ]
+    )
 
-    print("Pipeline fitted successfully")
-    print(transformed.shape)
+    transformed = pipeline.fit_transform(X)
+
+    print(
+        "\nPipeline fitted successfully"
+    )
+
+    print(
+        "Transformed shape:",
+        transformed.shape
+    )
