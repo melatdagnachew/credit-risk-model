@@ -18,6 +18,15 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install -r requirements.txt
+       - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install flake8 pytest
 
-      - run: pytest
+      - name: Run Linter
+        run: |
+          flake8 src tests
+
+      - name: Run Tests
+        run: |
+          pytest
