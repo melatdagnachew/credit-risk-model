@@ -163,16 +163,25 @@ best_model = grid.best_estimator_
 print("Best Params:", grid.best_params_)
 
 
+
 # -------------------------
 # 4. Best Model Logging
 # -------------------------
 with mlflow.start_run(run_name="BestModel"):
 
-    metrics = evaluate_model(best_model, X_test, y_test)
+    metrics = evaluate_model(
+        best_model,
+        X_test,
+        y_test
+    )
 
     mlflow.log_params(grid.best_params_)
     mlflow.log_metrics(metrics)
 
-    mlflow.sklearn.log_model(best_model, "model")
+    mlflow.sklearn.log_model(
+        best_model,
+        artifact_path="model",
+        registered_model_name="credit_risk_model"
+    )
 
     print("Best Model:", metrics)
