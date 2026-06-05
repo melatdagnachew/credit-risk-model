@@ -1,0 +1,23 @@
+artifact_path: /Users/melatdagnachew/Downloads/10 acadamy/credit-risk-model/mlruns/0/models/m-c04e10f259c6421ea660d4d17ec08b7d/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.13.3
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.6.1
+    skops_trusted_types: null
+mlflow_version: 3.13.0
+model_id: m-c04e10f259c6421ea660d4d17ec08b7d
+model_size_bytes: 3885026
+model_uuid: m-c04e10f259c6421ea660d4d17ec08b7d
+prompts: null
+run_id: e6e6113294cf4755b783b3fccdae28ec
+utc_time_created: '2026-06-05 10:37:04.527643'
